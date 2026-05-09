@@ -1,0 +1,46 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${workspaceFolder}/src/*.cpp",
+                "${workspaceFolder}/src/core/*.cpp",
+                "${workspaceFolder}/src/rendering/*.cpp",
+                "${workspaceFolder}/src/scene/*.cpp",
+                "${workspaceFolder}/src/physics/*.cpp",
+                "-I${workspaceFolder}/include",
+                "-I${workspaceFolder}/include/assimp",
+                "-I${workspaceFolder}/include/glm",
+                "-I${workspaceFolder}/include/GLFW",
+                "-I${workspaceFolder}/include/glad",
+                "-L${workspaceFolder}/lib",
+                "-lassimp-vc145-mt",
+                "-lglfw3",
+                "-lopengl32",
+                "-lgdi32",
+                "-luser32",
+                "-lkernel32",
+                "-o",
+                "${workspaceFolder}/microverse.exe"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "del",
+            "args": [
+                "${workspaceFolder}/microverse.exe"
+            ],
+            "group": "build"
+        }
+    ]
+}

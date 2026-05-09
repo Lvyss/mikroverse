@@ -1,0 +1,11 @@
+Model Information:
+* title:	nucleus
+* source:	https://sketchfab.com/3d-models/nucleus-0130c1dcee47436bac0dca3bfa4307f5
+* author:	MajoraMaster (https://sketchfab.com/MajoraMaster)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "nucleus" (https://sketchfab.com/3d-models/nucleus-0130c1dcee47436bac0dca3bfa4307f5) by MajoraMaster (https://sketchfab.com/MajoraMaster) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
