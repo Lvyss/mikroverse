@@ -20,18 +20,18 @@
 #include <stb_image.h>
 
 // ── Settings ──────────────────────────────────────────────
-const unsigned int SCR_W = 1280, SCR_H = 720;
+
 
 // ── Globals ───────────────────────────────────────────────
 Camera camera(glm::vec3(0.0f, FLOOR_HEIGHT + PLAYER_HEIGHT, 14.0f));
-float lastX = SCR_W / 2.0f, lastY = SCR_H / 2.0f;
+float lastX = 960.0f, lastY = 540.0f;
 bool firstMouse = true;
 float deltaTime = 0.0f, lastFrame = 0.0f;
 int postEffect = 4;
 
 // Pointer global ke interactSys agar bisa diakses di key_callback
 InteractionSystem* g_interactSys = nullptr;
-
+InfoPanel* g_infoPanel = nullptr;   // ← TAMBAH
 // ── Callbacks ─────────────────────────────────────────────
 void framebuffer_size_callback(GLFWwindow*, int w, int h) { glViewport(0, 0, w, h); }
 
@@ -48,19 +48,19 @@ void key_callback(GLFWwindow* win, int key, int, int action, int)
 {
     if (action != GLFW_PRESS) return;
 
-    // ── Popup open: override semua tombol navigation ──
     if (g_interactSys && g_interactSys->popupOpen) {
         if (key == GLFW_KEY_RIGHT)   { g_interactSys->nextSlide();  return; }
         if (key == GLFW_KEY_LEFT)    { g_interactSys->prevSlide();  return; }
         if (key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE) {
             g_interactSys->closePopup();
-            return; // jangan close window
+            return;
         }
     }
 
-    // ── Normal controls (hanya jika popup tidak open) ──
-    if (key == GLFW_KEY_ESCAPE)
+    if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(win, true);
+        return;
+    }
     if (key == GLFW_KEY_SPACE)
         camera.Jump();
     if (key == GLFW_KEY_P) {
@@ -69,8 +69,11 @@ void key_callback(GLFWwindow* win, int key, int, int action, int)
     }
     if (key == GLFW_KEY_E && g_interactSys)
         g_interactSys->onInteract();
-}
 
+    // ← TAMBAH INI
+    if (key == GLFW_KEY_H && g_infoPanel)
+        g_infoPanel->showHelpPopup();
+}
 void processInput(GLFWwindow* win)
 {
     if (g_interactSys && g_interactSys->popupOpen) return;
@@ -134,8 +137,31 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_W, SCR_H, "Microverse — Virtual Lab", nullptr, nullptr);
+GLFWmonitor* monitor    = glfwGetPrimaryMonitor();
+const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+unsigned int SCR_W      = mode->width;
+unsigned int SCR_H      = mode->height;
+
+glfwWindowHint(GLFW_RED_BITS,     mode->redBits);
+glfwWindowHint(GLFW_GREEN_BITS,   mode->greenBits);
+glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
+glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+
+   GLFWwindow* window = glfwCreateWindow(SCR_W, SCR_H, "Microverse — Virtual Lab", monitor, nullptr);
     glfwMakeContextCurrent(window);
+    // ── Set window icon ───────────────────────────────────
+// ── Set window icon ───────────────────────────────────
+{
+    GLFWimage icon;
+    stbi_set_flip_vertically_on_load(false);
+    icon.pixels = stbi_load("assets/logo.png",
+                            &icon.width, &icon.height, nullptr, 4);
+    if (icon.pixels) {
+        glfwSetWindowIcon(window, 1, &icon);
+        stbi_image_free(icon.pixels);
+    }
+    stbi_set_flip_vertically_on_load(true);
+}
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -184,6 +210,7 @@ int main()
 
     InfoPanel infoPanel;
     infoPanel.init(SCR_W, SCR_H);
+    g_infoPanel = &infoPanel;   // ← TAMBAH
 
     // ── Text Renderer ─────────────────────────────────────
     TextRenderer textRenderer;
@@ -214,7 +241,7 @@ int main()
     float virusMaxDim = std::max({(virusMax - virusMin).x, (virusMax - virusMin).y, (virusMax - virusMin).z});
     float targetDiameter  = 3.2f;
     float mitoAutoScale   = mitoMaxDim  > 0.0f ? (targetDiameter / mitoMaxDim)  : 1.0f;
-    float virusAutoScale  = virusMaxDim > 0.0f ? (targetDiameter / virusMaxDim) : 1.0f;
+    float virusAutoScale  = virusMaxDim > 0.0f ? (2.0f / virusMaxDim) : 1.0f;
     const float platformTopY = 0.35f;
     float mitoYOffset  = platformTopY + (-mitoMin.y)  * mitoAutoScale  + 0.9f;
     float virusYOffset = platformTopY + (-virusMin.y) * virusAutoScale + 0.4f;

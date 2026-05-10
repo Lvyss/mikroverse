@@ -336,36 +336,78 @@ private:
             makeVAO(platGlowVAO, platGlowVBO, v, platGlowCount, false);
         }
 
-        // ── 5. Step tangga kecil di belakang (seperti gambar)
-        {
-            std::vector<float> v;
-            // 3 step, makin ke luar makin rendah
-            float steps[3][3] = {
-                // {rMin, rMax, height}
-                {2.15f, 2.6f,  0.22f},
-                {2.6f,  3.1f,  0.12f},
-                {3.1f,  3.6f,  0.05f},
-            };
-            const int SSEG = 48;
-            // Hanya bagian belakang (180 derajat)
-            for (auto& s : steps) {
-                for (int i=0;i<SSEG;i++) {
-                    float a0 = (float)i/SSEG*PI + PI*0.5f;
-                    float a1 = (float)(i+1)/SSEG*PI + PI*0.5f;
-                    float u0=(float)i/SSEG, u1=(float)(i+1)/SSEG;
-                    float rIn=s[0], rOut=s[1], h=s[2];
-                    // Top
-                    v.insert(v.end(),{rIn*cosf(a0),h,rIn*sinf(a0),  0,1,0, u0,0});
-                    v.insert(v.end(),{rOut*cosf(a0),h,rOut*sinf(a0), 0,1,0, u0,1});
-                    v.insert(v.end(),{rOut*cosf(a1),h,rOut*sinf(a1), 0,1,0, u1,1});
-                    v.insert(v.end(),{rOut*cosf(a1),h,rOut*sinf(a1), 0,1,0, u1,1});
-                    v.insert(v.end(),{rIn*cosf(a1),h,rIn*sinf(a1),  0,1,0, u1,0});
-                    v.insert(v.end(),{rIn*cosf(a0),h,rIn*sinf(a0),  0,1,0, u0,0});
-                }
-            }
-            makeVAO(platStepVAO, platStepVBO, v, platStepCount);
-        }
-    }
+// ── 5. Step tangga menghadap spawn (+Z), 3 step naik ────
+// {
+//     std::vector<float> v;
+//     const int SSEG = 32;
+
+//     float arcCenter = PI / 2.0f;
+//     float arcHalf   = 0.61f;
+//     float aStart    = arcCenter - arcHalf;
+//     float aEnd      = arcCenter + arcHalf;
+
+//     struct StepDef { float rIn, rOut, hBottom, hTop; };
+//     StepDef steps[] = {
+//         {2.7f, 3.3f, 0.0f, 0.5f},   // step 1 terluar
+//         {2.1f, 2.7f, 0.5f, 1.0f},   // step 2 tengah
+//         {1.5f, 2.1f, 1.0f, 1.5f},   // step 3 terdalam
+//     };
+
+//     for (auto& s : steps) {
+//         for (int i = 0; i < SSEG; i++) {
+//             float a0 = aStart + (aEnd - aStart) * ((float)i     / SSEG);
+//             float a1 = aStart + (aEnd - aStart) * ((float)(i+1) / SSEG);
+//             float u0 = (float)i / SSEG;
+//             float u1 = (float)(i+1) / SSEG;
+//             float rIn = s.rIn, rOut = s.rOut;
+//             float hT  = s.hTop, hB = s.hBottom;
+
+//             // ── Top face ─────────────────────────────────
+//             v.insert(v.end(),{rIn *cosf(a0),hT,rIn *sinf(a0), 0,1,0, u0,0});
+//             v.insert(v.end(),{rOut*cosf(a0),hT,rOut*sinf(a0), 0,1,0, u0,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), 0,1,0, u1,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), 0,1,0, u1,1});
+//             v.insert(v.end(),{rIn *cosf(a1),hT,rIn *sinf(a1), 0,1,0, u1,0});
+//             v.insert(v.end(),{rIn *cosf(a0),hT,rIn *sinf(a0), 0,1,0, u0,0});
+
+//             // ── Outer wall (vertikal) ─────────────────────
+//             v.insert(v.end(),{rOut*cosf(a0),hB,rOut*sinf(a0), cosf(a0),0,sinf(a0), u0,0});
+//             v.insert(v.end(),{rOut*cosf(a0),hT,rOut*sinf(a0), cosf(a0),0,sinf(a0), u0,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), cosf(a1),0,sinf(a1), u1,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), cosf(a1),0,sinf(a1), u1,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hB,rOut*sinf(a1), cosf(a1),0,sinf(a1), u1,0});
+//             v.insert(v.end(),{rOut*cosf(a0),hB,rOut*sinf(a0), cosf(a0),0,sinf(a0), u0,0});
+
+//             // ── Inner wall (vertikal) ─────────────────────
+//             v.insert(v.end(),{rIn*cosf(a0),hB,rIn*sinf(a0), -cosf(a0),0,-sinf(a0), u0,0});
+//             v.insert(v.end(),{rIn*cosf(a0),hT,rIn*sinf(a0), -cosf(a0),0,-sinf(a0), u0,1});
+//             v.insert(v.end(),{rIn*cosf(a1),hT,rIn*sinf(a1), -cosf(a1),0,-sinf(a1), u1,1});
+//             v.insert(v.end(),{rIn*cosf(a1),hT,rIn*sinf(a1), -cosf(a1),0,-sinf(a1), u1,1});
+//             v.insert(v.end(),{rIn*cosf(a1),hB,rIn*sinf(a1), -cosf(a1),0,-sinf(a1), u1,0});
+//             v.insert(v.end(),{rIn*cosf(a0),hB,rIn*sinf(a0), -cosf(a0),0,-sinf(a0), u0,0});
+
+//             // ── Side kiri arc ─────────────────────────────
+//             v.insert(v.end(),{rIn *cosf(a0),hB,rIn *sinf(a0), -sinf(a0),0,cosf(a0), 0,0});
+//             v.insert(v.end(),{rIn *cosf(a0),hT,rIn *sinf(a0), -sinf(a0),0,cosf(a0), 0,1});
+//             v.insert(v.end(),{rOut*cosf(a0),hT,rOut*sinf(a0), -sinf(a0),0,cosf(a0), 1,1});
+//             v.insert(v.end(),{rOut*cosf(a0),hT,rOut*sinf(a0), -sinf(a0),0,cosf(a0), 1,1});
+//             v.insert(v.end(),{rOut*cosf(a0),hB,rOut*sinf(a0), -sinf(a0),0,cosf(a0), 1,0});
+//             v.insert(v.end(),{rIn *cosf(a0),hB,rIn *sinf(a0), -sinf(a0),0,cosf(a0), 0,0});
+
+//             // ── Side kanan arc ────────────────────────────
+//             v.insert(v.end(),{rIn *cosf(a1),hB,rIn *sinf(a1), sinf(a1),0,-cosf(a1), 0,0});
+//             v.insert(v.end(),{rIn *cosf(a1),hT,rIn *sinf(a1), sinf(a1),0,-cosf(a1), 0,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), sinf(a1),0,-cosf(a1), 1,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hT,rOut*sinf(a1), sinf(a1),0,-cosf(a1), 1,1});
+//             v.insert(v.end(),{rOut*cosf(a1),hB,rOut*sinf(a1), sinf(a1),0,-cosf(a1), 1,0});
+//             v.insert(v.end(),{rIn *cosf(a1),hB,rIn *sinf(a1), sinf(a1),0,-cosf(a1), 0,0});
+//         }
+//     }
+//     makeVAO(platStepVAO, platStepVBO, v, platStepCount);
+// }
+ 
+
+}
 
     void drawPlatforms(Shader& shader) {
         for (int i=0;i<3;i++) {

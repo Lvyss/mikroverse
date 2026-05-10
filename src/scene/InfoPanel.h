@@ -18,6 +18,7 @@ struct TextEntry {
     float x, y, scale;
     glm::vec3 color;
     float alpha;
+    
 };
 
 // ============================================================================
@@ -98,6 +99,7 @@ public:
         unit = DesignTokens::GRID * scale;
     }
     
+    
     float u(float n = 1.0f) const { return n * unit; }
     float fs(float baseScale) const { return std::clamp(baseScale * scale, 0.45f, 2.0f); }
     
@@ -123,10 +125,19 @@ public:
         m_layout = Layout((float)scrW, (float)scrH);
         setupQuad();
     }
+void showHelpPopup() {
+    m_fullHelpOpen = !m_fullHelpOpen;  // ← ini yang bener, bisa buka & tutup
+}
+void render(Shader& shader, InteractionSystem& is, float time) {
+    // ← UBAH BAGIAN INI
+    if (m_lastTime < 0.001f) {
+        m_lastTime = time;  // inisialisasi dengan waktu sekarang, bukan 0
+    }
+    float dt = time - m_lastTime;
+    m_lastTime = time;
     
-    void render(Shader& shader, InteractionSystem& is, float time) {
-        m_time = time;
-        m_pulse = 0.85f + std::sin(time * 5.0f) * 0.1f;
+    m_time = time;
+    m_pulse = 0.85f + std::sin(time * 5.0f) * 0.1f;
         
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -144,23 +155,30 @@ public:
             renderPopup(shader, is);
         }
         
+        renderHelpPopup(shader, dt);
+
         glEnable(GL_DEPTH_TEST);
     }
     
-    // INI YANG DIPAKE MAIN.CPP - NGEMBALIKIN VECTOR<TextEntry>
-    std::vector<TextEntry> getTextEntries(InteractionSystem& is, float time) {
-        std::vector<TextEntry> entries;
-        
-        if (is.promptVisible && is.getNearestObject()) {
-            addPromptText(entries, is);
-        }
-        
-        if ((is.popupOpen || is.popupClosing) && is.popupAlpha > 0.01f && is.getNearestObject()) {
-            addPopupText(entries, is);
-        }
-        
-        return entries;
+std::vector<TextEntry> getTextEntries(InteractionSystem& is, float time) {
+    std::vector<TextEntry> entries;
+    
+    if (is.promptVisible && is.getNearestObject()) {
+        addPromptText(entries, is);
     }
+    
+    if ((is.popupOpen || is.popupClosing) && is.popupAlpha > 0.01f && is.getNearestObject()) {
+        addPopupText(entries, is);
+    }
+    
+    // ========== PANGGIL HELP POPUP TEXT ==========
+if (m_helpPopupVisible || m_fullHelpOpen) {
+    addHelpPopupText(entries, 1.0f);
+}
+    // =============================================
+    
+    return entries;
+}
     
     bool handleMouseClick(InteractionSystem& is, float mouseX, float mouseY) {
         if (!is.popupOpen || !is.getNearestObject()) return false;
@@ -169,6 +187,7 @@ public:
         int total = (int)obj->slides.size();
         float glY = m_height - mouseY;
         auto panel = m_layout.dialog();
+        
         
         // Navigation buttons
         float navW = m_layout.u(6.0f);
@@ -205,6 +224,14 @@ private:
     Layout m_layout = Layout(1920, 1080);
     float m_time = 0.0f;
     float m_pulse = 1.0f;
+
+    // ========== TAMBAHKAN INI UNTUK HELP POPUP ==========
+bool m_helpPopupVisible = true;
+float m_helpPopupTimer = 0.0f;
+const float m_helpDuration = 8.0f;
+float m_lastTime = 0.0f;
+bool m_fullHelpOpen = false;   // ← TAMBAH INI
+    // =====================================================
     
 // ========================================================================
 // PROMPT RENDERING - VERSION FIX (lebih pendek & rapi)
@@ -464,7 +491,10 @@ for (size_t i = 0; i < lines.size(); i++) {
         m_layout.fs(0.26f),
         {0.38f, 0.55f, 0.82f}, a * 0.70f});
 }
-    // ========================================================================
+  
+
+
+// ========================================================================
     // RENDER UTILITIES
     // ========================================================================
     void setupQuad() {
@@ -516,4 +546,145 @@ for (size_t i = 0; i < lines.size(); i++) {
         if (!cur.empty()) lines.push_back(cur);
         return lines;
     }
+
+    // ========================================================================
+// HELP POPUP RENDERING
+// ========================================================================
+// ========================================================================
+// HELP POPUP RENDERING (langsung di .h karena header-only)
+// ========================================================================
+// ========================================================================
+
+
+
+// HELP POPUP RENDERING - STYLE SAMA DENGAN PROMPT
+// ========================================================================
+void renderHelpPopup(Shader& shader, float dt) {
+    if (!m_helpPopupVisible && !m_fullHelpOpen) return;
+
+    // ── MODE FULL (tekan H) ──────────────────────────────
+    if (m_fullHelpOpen) {
+        float pw = m_layout.u(100.0f);
+        float ph = m_layout.u(55.0f);
+        float px = (m_width  - pw) / 2.0f;
+        float py = (m_height - ph) / 2.0f;
+        drawRect(shader, px - 10, py - 6, pw + 20, ph + 12,
+                 {0.05f, 0.35f, 0.90f, 0.12f * m_pulse}, 16.0f);
+        drawRect(shader, px, py, pw, ph,
+                 {0.02f, 0.04f, 0.10f, 0.94f}, 10.0f);
+        drawRectBorder(shader, px, py, pw, ph,
+                 {0.12f, 0.65f, 1.00f, 0.55f * m_pulse}, 1.5f, 10.0f);
+        return;
+    }
+
+    // ── MODE KECIL (awal masuk) ──────────────────────────
+    m_helpPopupTimer += dt;
+    if (m_helpPopupTimer >= m_helpDuration) {
+        m_helpPopupVisible = false;
+        return;
+    }
+
+    float a = 1.0f;
+    if (m_helpPopupTimer > m_helpDuration - 2.0f)
+        a = (m_helpDuration - m_helpPopupTimer) / 2.0f;
+
+    float cx = m_width / 2.0f;
+    float pw = 280.0f;
+    float ph = 52.0f;
+    float px = cx - pw / 2.0f;
+    float py = 90.0f;   // pojok atas
+
+    drawRect(shader, px - 10, py - 6, pw + 20, ph + 12,
+             {0.05f, 0.35f, 0.90f, 0.12f * m_pulse * a}, 16.0f);
+    drawRect(shader, px, py, pw, ph,
+             {0.02f, 0.04f, 0.10f, 0.94f * a}, 10.0f);
+    drawRectBorder(shader, px, py, pw, ph,
+             {0.12f, 0.65f, 1.00f, 0.55f * m_pulse * a}, 1.5f, 10.0f);
+}
+
+
+void addHelpPopupText(std::vector<TextEntry>& entries, float alpha) {
+
+    // ── MODE FULL (tekan H) ──────────────────────────────
+    if (m_fullHelpOpen) {
+        float pw = m_layout.u(100.0f);
+        float ph = m_layout.u(55.0f);
+        float px = (m_width  - pw) / 2.0f;
+        float py = (m_height - ph) / 2.0f;
+
+        float textX     = px + m_layout.u(7.7f);
+        float textBaseY = py + ph - m_layout.u(15.5f);
+        float fontSize  = m_layout.fs(0.40f);
+        float smallFont = m_layout.fs(0.28f);
+        float lineH     = m_layout.u(3.0f);
+        float col1X     = textX;
+        float col2X     = textX + m_layout.u(50.0f);
+        float startY    = textBaseY - m_layout.u(5.5f);
+
+        // Judul
+        entries.push_back({"=== KEYBOARD CONTROLS ===",
+            px + m_layout.u(35.5f), textBaseY + 10.0f, fontSize,
+            {0.28f, 0.90f, 1.00f}, 1.0f});
+
+        // Kolom Kiri - Key
+        entries.push_back({"W / A / S / D", col1X, startY - 0 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"Mouse",         col1X, startY - 1 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"F",             col1X, startY - 2 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"Space",         col1X, startY - 3 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"Left Ctrl",     col1X, startY - 4 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"C",             col1X, startY - 5 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+
+        // Kolom Kiri - Deskripsi
+        entries.push_back({"Gerak maju/kiri/mundur/kanan", col1X + m_layout.u(14.0f), startY - 0 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Lihat / putar kamera",         col1X + m_layout.u(14.0f), startY - 1 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Mode Terbang / Jalan",         col1X + m_layout.u(14.0f), startY - 2 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Lompat (mode jalan)",          col1X + m_layout.u(14.0f), startY - 3 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Naik (mode terbang)",          col1X + m_layout.u(14.0f), startY - 4 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Turun (mode terbang)",         col1X + m_layout.u(14.0f), startY - 5 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+
+        // Kolom Kanan - Key
+        entries.push_back({"Shift",   col2X, startY - 0 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"E",       col2X, startY - 1 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"Q / ESC", col2X, startY - 2 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"P",       col2X, startY - 3 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+        entries.push_back({"< / >",   col2X, startY - 4 * lineH, smallFont, {0.28f, 0.90f, 1.00f}, 1.0f});
+
+        // Kolom Kanan - Deskripsi
+        entries.push_back({"Sprint (mode terbang)",    col2X + m_layout.u(12.0f), startY - 0 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Interaksi dengan objek",   col2X + m_layout.u(12.0f), startY - 1 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Tutup popup info object",         col2X + m_layout.u(12.0f), startY - 2 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Post-processing effect",   col2X + m_layout.u(12.0f), startY - 3 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+        entries.push_back({"Navigasi slide (popup)",   col2X + m_layout.u(12.0f), startY - 4 * lineH, smallFont, {0.75f, 0.80f, 0.95f}, 0.85f});
+
+        // Hint tutup
+        entries.push_back({"Tekan H untuk menutup",
+            px + pw / 2.0f - m_layout.u(10.0f),
+            py + m_layout.u(2.5f),
+            m_layout.fs(0.26f),
+            {0.55f, 0.70f, 0.92f}, 0.85f});
+        return;
+    }
+
+    // ── MODE KECIL (awal masuk) ──────────────────────────
+    if (!m_helpPopupVisible) return;
+
+    float a = alpha;
+    if (m_helpPopupTimer > m_helpDuration - 2.0f)
+        a = (m_helpDuration - m_helpPopupTimer) / 2.0f;
+
+    float cx = m_width / 2.0f;
+    float pw = 280.0f;
+    float py = 90.0f;
+    float ph = 52.0f;
+    float px = cx - pw / 2.0f;
+
+    entries.push_back({"Tekan  H  untuk melihat kontrol keyboard",
+        px + 19.5f,
+        py + ph - 29.5f,
+        m_layout.fs(0.75f),
+        {0.85f, 0.92f, 1.00f}, a});
+}
+
+
+
 };

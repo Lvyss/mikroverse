@@ -119,18 +119,43 @@ public:
     }
         // ── WALK MODE PHYSICS ─────────────────────────────
 
-        // Gravitasi
-        const float GRAVITY     = 18.0f;   // lebih natural dari 9.8
-        const float TERM_VEL_Y  = -20.0f;  // terminal velocity turun
+      // WALK MODE PHYSICS
+    const float GRAVITY    = 18.0f;
+    const float TERM_VEL_Y = -20.0f;
 
-        Velocity.y -= GRAVITY * dt;
-        if (Velocity.y < TERM_VEL_Y) Velocity.y = TERM_VEL_Y;
+    Velocity.y -= GRAVITY * dt;
+    if (Velocity.y < TERM_VEL_Y) Velocity.y = TERM_VEL_Y;
 
-        // Apply velocity
-        Position += Velocity * dt;
+    Position += Velocity * dt;
 
-        // ── Collision lantai ──────────────────────────────
-        float groundY = FLOOR_HEIGHT + PLAYER_HEIGHT;
+    // ── Collision stage platform ──────────────────────────
+    struct Stage { float x, z, outerR, topY; };
+    Stage stages[3] = {
+        {-6.0f, -5.0f, 2.1f, 0.38f + PLAYER_HEIGHT},
+        { 6.0f, -5.0f, 2.1f, 0.38f + PLAYER_HEIGHT},
+        { 0.0f,  8.0f, 2.1f, 0.38f + PLAYER_HEIGHT},
+    };
+
+    bool onStage = false;
+    for (auto& s : stages) {
+        float dx   = Position.x - s.x;
+        float dz   = Position.z - s.z;
+        float dist = sqrtf(dx*dx + dz*dz);
+
+        if (dist < s.outerR) {
+            // Player di atas stage
+            if (Position.y <= s.topY && Velocity.y <= 0.0f) {
+                Position.y = s.topY;
+                Velocity.y = 0.0f;
+                isOnGround = true;
+                onStage    = true;
+            }
+        }
+    }
+
+    // ── Collision lantai normal ───────────────────────────
+    float groundY = FLOOR_HEIGHT + PLAYER_HEIGHT;
+    if (!onStage) {
         if (Position.y <= groundY) {
             Position.y = groundY;
             Velocity.y = 0.0f;
@@ -138,30 +163,26 @@ public:
         } else {
             isOnGround = false;
         }
-
-        // ── Collision langit-langit ───────────────────────
-        float ceilY = CEIL_HEIGHT - 0.3f;
-        if (Position.y > ceilY) {
-            Position.y = ceilY;
-            Velocity.y = 0.0f;  // kepala nabrak langit-langit
-        }
-
-        // ── Collision dinding ─────────────────────────────
-        Position.x = glm::clamp(Position.x,
-            LAB_MIN_X + PLAYER_RADIUS,
-            LAB_MAX_X - PLAYER_RADIUS);
-        Position.z = glm::clamp(Position.z,
-            LAB_MIN_Z + PLAYER_RADIUS,
-            LAB_MAX_Z - PLAYER_RADIUS);
-
-        // ── Friction horizontal (biar tidak licin) ────────
-        // Hanya di ground
-        if (isOnGround) {
-            Velocity.x *= 0.80f;
-            Velocity.z *= 0.80f;
-        }
     }
 
+    // ── Collision langit-langit ───────────────────────────
+    float ceilY = CEIL_HEIGHT - 0.3f;
+    if (Position.y > ceilY) {
+        Position.y = ceilY;
+        Velocity.y = 0.0f;
+    }
+
+    // ── Collision dinding ─────────────────────────────────
+    Position.x = glm::clamp(Position.x,
+        LAB_MIN_X + PLAYER_RADIUS, LAB_MAX_X - PLAYER_RADIUS);
+    Position.z = glm::clamp(Position.z,
+        LAB_MIN_Z + PLAYER_RADIUS, LAB_MAX_Z - PLAYER_RADIUS);
+
+    if (isOnGround) {
+        Velocity.x *= 0.80f;
+        Velocity.z *= 0.80f;
+    }
+}
     void Jump() {
         if (!isFlyMode && isOnGround) {
             Velocity.y = 7.0f;   // kekuatan lompat
